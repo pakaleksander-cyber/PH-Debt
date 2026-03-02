@@ -3,70 +3,98 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Portfolio IRR Calculator</title>
+<title>Portfolio IRR Calculator (PHP)</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-body { font-family: Arial; margin: 30px; background:#f5f6fa; }
-h1 { margin-bottom:10px; }
-.section { background:white; padding:20px; margin-bottom:20px; border-radius:10px; }
+body { font-family: Arial; margin: 30px; background:#f4f6f9; }
+h1 { margin-bottom:5px; }
+.subtitle { color:#555; margin-bottom:20px; }
+.section { background:white; padding:20px; margin-bottom:20px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.05); }
+.grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; }
+label { font-size:13px; font-weight:bold; }
+.desc { font-size:11px; color:#666; margin-bottom:6px; }
 input { width:100%; padding:8px; margin-top:4px; margin-bottom:10px; }
-button { padding:12px 20px; background:#2f80ed; color:white; border:none; border-radius:6px; cursor:pointer; }
-button:hover { background:#1c5fd4; }
-.big { font-size:32px; font-weight:bold; }
-.small { color:gray; }
+button { padding:12px 20px; background:#1f4ed8; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; }
+button:hover { background:#163ea6; }
+.kpi { font-size:34px; font-weight:bold; }
+.small { font-size:14px; color:#666; }
 table { border-collapse: collapse; width:100%; margin-top:15px; font-size:12px;}
 th, td { border:1px solid #ddd; padding:6px; text-align:right; }
 th { background:#f0f0f0; }
 .left { text-align:left; }
+.summary { font-size:14px; }
 </style>
 </head>
 <body>
 
-<h1>Portfolio IRR Calculator (PHP)</h1>
+<h1>Portfolio IRR Calculator</h1>
+<div class="subtitle">Модель оценки доходности покупки портфеля задолженности (валюта: PHP)</div>
 
-<div class="section">
-<h3>Portfolio Purchase</h3>
+<div class="section grid">
+
+<div>
 <label>Количество дел (шт.)</label>
+<div class="desc">Общее количество дел в портфеле</div>
 <input id="cases" type="number" value="10000">
+</div>
 
+<div>
 <label>Средний номинал (PHP)</label>
+<div class="desc">Средний основной долг по делу</div>
 <input id="nominal" type="number" value="10000">
+</div>
 
+<div>
 <label>Цена покупки (%)</label>
+<div class="desc">Процент от номинала, уплаченный за портфель</div>
 <input id="price" type="number" value="5">
 </div>
 
-<div class="section">
-<h3>Portfolio Structure</h3>
+<div>
 <label>Dead Share (%)</label>
+<div class="desc">Доля невзыскиваемых дел</div>
 <input id="dead" type="number" value="40">
+</div>
 
+<div>
 <label>Recovery Ceiling (%)</label>
+<div class="desc">Средний % взыскания от номинала закрытого дела</div>
 <input id="ceiling" type="number" value="35">
+</div>
 
+<div>
 <label>Lifetime (мес.)</label>
+<div class="desc">Средний срок жизни дела</div>
 <input id="lifetime" type="number" value="12">
 </div>
 
-<div class="section">
-<h3>Operations</h3>
-<label>Дел на одного коллектора</label>
+<div>
+<label>Дел на коллектора</label>
+<div class="desc">Максимальная нагрузка на одного сотрудника</div>
 <input id="capacity" type="number" value="500">
+</div>
 
+<div>
 <label>Зарплата коллектора (PHP)</label>
+<div class="desc">Фиксированная месячная зарплата</div>
 <input id="salary" type="number" value="30000">
+</div>
 
+<div>
 <label>Переменные расходы на дело (PHP)</label>
+<div class="desc">IVR, SMS и прочие расходы</div>
 <input id="variable" type="number" value="20">
+</div>
+
 </div>
 
 <button onclick="calculate()">Рассчитать</button>
 
 <div class="section">
-<div>IRR (годовой):</div>
-<div id="irrYear" class="big"></div>
+<div>IRR (годовой)</div>
+<div id="irrYear" class="kpi"></div>
 <div id="irrMonth" class="small"></div>
-<div id="payback"></div>
+<div id="payback" class="small"></div>
 </div>
 
 <div class="section">
@@ -74,11 +102,17 @@ th { background:#f0f0f0; }
 </div>
 
 <div class="section">
-<h3>Cash Flow Table</h3>
+<h3>Сводные показатели</h3>
+<div id="summary" class="summary"></div>
+</div>
+
+<div class="section">
+<h3>Таблица денежных потоков (36 месяцев)</h3>
 <div id="table"></div>
 </div>
 
 <script>
+
 function formatPHP(x){
   return Math.round(x).toString().replace(/\B(?=(\d{3})+(?!\d))/g," ") + " PHP";
 }
@@ -128,12 +162,7 @@ function calculate(){
 
   for(let m=1;m<=months;m++){
 
-    let deadOut = 0;
-    if(m<=3){
-      deadOut = deadCases*0.8/3;
-    } else {
-      deadOut = deadCases*0.2/33;
-    }
+    let deadOut = m<=3 ? (cases*dead*0.8/3) : (cases*dead*0.2/33);
     deadCases -= deadOut;
 
     let closed = liveCases * burn;
@@ -144,7 +173,6 @@ function calculate(){
     cumulativeRecovery += recovery;
 
     let avgWork = (liveCases + closed)/2 + deadCases;
-
     let collectors = Math.ceil(avgWork/capacity);
     if(avgWork>0 && collectors<1) collectors=1;
 
@@ -176,6 +204,11 @@ function calculate(){
   document.getElementById("irrMonth").innerText = "IRR (месячный): "+(irrMonthly*100).toFixed(2)+" %";
   document.getElementById("payback").innerText = paybackMonth ? "Payback: "+paybackMonth+" мес." : "Не окупается";
 
+  document.getElementById("summary").innerHTML =
+    "Стоимость покупки: "+formatPHP(purchase)+"<br>"+
+    "Совокупные сборы: "+formatPHP(cumulativeRecovery)+"<br>"+
+    "Итоговый чистый поток: "+formatPHP(cumulativeNet);
+
   new Chart(document.getElementById("chart"),{
     type:"line",
     data:{
@@ -184,6 +217,7 @@ function calculate(){
     }
   });
 }
+
 </script>
 
 </body>
