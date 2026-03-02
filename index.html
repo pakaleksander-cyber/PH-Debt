@@ -1,0 +1,190 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Portfolio IRR Calculator</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body { font-family: Arial; margin: 30px; background:#f5f6fa; }
+h1 { margin-bottom:10px; }
+.section { background:white; padding:20px; margin-bottom:20px; border-radius:10px; }
+input { width:100%; padding:8px; margin-top:4px; margin-bottom:10px; }
+button { padding:12px 20px; background:#2f80ed; color:white; border:none; border-radius:6px; cursor:pointer; }
+button:hover { background:#1c5fd4; }
+.big { font-size:32px; font-weight:bold; }
+.small { color:gray; }
+table { border-collapse: collapse; width:100%; margin-top:15px; font-size:12px;}
+th, td { border:1px solid #ddd; padding:6px; text-align:right; }
+th { background:#f0f0f0; }
+.left { text-align:left; }
+</style>
+</head>
+<body>
+
+<h1>Portfolio IRR Calculator (PHP)</h1>
+
+<div class="section">
+<h3>Portfolio Purchase</h3>
+<label>Количество дел (шт.)</label>
+<input id="cases" type="number" value="10000">
+
+<label>Средний номинал (PHP)</label>
+<input id="nominal" type="number" value="10000">
+
+<label>Цена покупки (%)</label>
+<input id="price" type="number" value="5">
+</div>
+
+<div class="section">
+<h3>Portfolio Structure</h3>
+<label>Dead Share (%)</label>
+<input id="dead" type="number" value="40">
+
+<label>Recovery Ceiling (%)</label>
+<input id="ceiling" type="number" value="35">
+
+<label>Lifetime (мес.)</label>
+<input id="lifetime" type="number" value="12">
+</div>
+
+<div class="section">
+<h3>Operations</h3>
+<label>Дел на одного коллектора</label>
+<input id="capacity" type="number" value="500">
+
+<label>Зарплата коллектора (PHP)</label>
+<input id="salary" type="number" value="30000">
+
+<label>Переменные расходы на дело (PHP)</label>
+<input id="variable" type="number" value="20">
+</div>
+
+<button onclick="calculate()">Рассчитать</button>
+
+<div class="section">
+<div>IRR (годовой):</div>
+<div id="irrYear" class="big"></div>
+<div id="irrMonth" class="small"></div>
+<div id="payback"></div>
+</div>
+
+<div class="section">
+<canvas id="chart"></canvas>
+</div>
+
+<div class="section">
+<h3>Cash Flow Table</h3>
+<div id="table"></div>
+</div>
+
+<script>
+function formatPHP(x){
+  return Math.round(x).toString().replace(/\B(?=(\d{3})+(?!\d))/g," ") + " PHP";
+}
+
+function IRR(cashflows, guess=0.1){
+  let x = guess;
+  for(let i=0;i<1000;i++){
+    let f=0, df=0;
+    for(let t=0;t<cashflows.length;t++){
+      f += cashflows[t]/Math.pow(1+x,t);
+      df += -t*cashflows[t]/Math.pow(1+x,t+1);
+    }
+    let newX = x - f/df;
+    if(Math.abs(newX-x)<1e-7) return newX;
+    x = newX;
+  }
+  return x;
+}
+
+function calculate(){
+
+  let cases = parseFloat(document.getElementById("cases").value);
+  let nominal = parseFloat(document.getElementById("nominal").value);
+  let price = parseFloat(document.getElementById("price").value)/100;
+  let dead = parseFloat(document.getElementById("dead").value)/100;
+  let ceiling = parseFloat(document.getElementById("ceiling").value)/100;
+  let lifetime = parseInt(document.getElementById("lifetime").value);
+  let capacity = parseFloat(document.getElementById("capacity").value);
+  let salary = parseFloat(document.getElementById("salary").value);
+  let variable = parseFloat(document.getElementById("variable").value);
+
+  let months = 36;
+  let burn = 1/lifetime;
+
+  let deadCases = cases * dead;
+  let liveCases = cases - deadCases;
+
+  let purchase = cases * nominal * price;
+  let cashflows = [-purchase];
+
+  let cumulativeRecovery = 0;
+  let cumulativeNet = -purchase;
+  let paybackMonth = null;
+
+  let chartData = [];
+  let tableHTML = "<table><tr><th class='left'>Месяц</th><th>Сборы</th><th>Расходы</th><th>Налог</th><th>Чистый поток</th><th>Накопленный</th></tr>";
+
+  for(let m=1;m<=months;m++){
+
+    let deadOut = 0;
+    if(m<=3){
+      deadOut = deadCases*0.8/3;
+    } else {
+      deadOut = deadCases*0.2/33;
+    }
+    deadCases -= deadOut;
+
+    let closed = liveCases * burn;
+    if(closed>liveCases) closed=liveCases;
+    liveCases -= closed;
+
+    let recovery = closed * nominal * ceiling;
+    cumulativeRecovery += recovery;
+
+    let avgWork = (liveCases + closed)/2 + deadCases;
+
+    let collectors = Math.ceil(avgWork/capacity);
+    if(avgWork>0 && collectors<1) collectors=1;
+
+    let cost = collectors*salary + avgWork*variable;
+
+    let tax = 0;
+    if(cumulativeRecovery>purchase){
+      tax = (cumulativeRecovery - purchase)*0.12;
+    }
+
+    let net = recovery - cost - tax;
+    cumulativeNet += net;
+
+    if(paybackMonth===null && cumulativeNet>0) paybackMonth=m;
+
+    cashflows.push(net);
+    chartData.push((cumulativeRecovery/(cases*nominal))*100);
+
+    tableHTML += "<tr><td class='left'>"+m+"</td><td>"+formatPHP(recovery)+"</td><td>"+formatPHP(cost)+"</td><td>"+formatPHP(tax)+"</td><td>"+formatPHP(net)+"</td><td>"+formatPHP(cumulativeNet)+"</td></tr>";
+  }
+
+  tableHTML+="</table>";
+  document.getElementById("table").innerHTML = tableHTML;
+
+  let irrMonthly = IRR(cashflows);
+  let irrYear = Math.pow(1+irrMonthly,12)-1;
+
+  document.getElementById("irrYear").innerText = (irrYear*100).toFixed(2)+" %";
+  document.getElementById("irrMonth").innerText = "IRR (месячный): "+(irrMonthly*100).toFixed(2)+" %";
+  document.getElementById("payback").innerText = paybackMonth ? "Payback: "+paybackMonth+" мес." : "Не окупается";
+
+  new Chart(document.getElementById("chart"),{
+    type:"line",
+    data:{
+      labels:[...Array(36).keys()].map(x=>x+1),
+      datasets:[{label:"Recovery %", data:chartData}]
+    }
+  });
+}
+</script>
+
+</body>
+</html>
