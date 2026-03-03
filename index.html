@@ -1,224 +1,1158 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Portfolio IRR Calculator (PHP)</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькулятор оценки IRR покупки портфеля задолженности</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-body { font-family: Arial; margin: 30px; background:#f4f6f9; }
-h1 { margin-bottom:5px; }
-.subtitle { color:#555; margin-bottom:20px; }
-.section { background:white; padding:20px; margin-bottom:20px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.05); }
-.grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; }
-label { font-size:13px; font-weight:bold; }
-.desc { font-size:11px; color:#666; margin-bottom:6px; }
-input { width:100%; padding:8px; margin-top:4px; margin-bottom:10px; }
-button { padding:12px 20px; background:#1f4ed8; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold; }
-button:hover { background:#163ea6; }
-.kpi { font-size:34px; font-weight:bold; }
-.small { font-size:14px; color:#666; }
-table { border-collapse: collapse; width:100%; margin-top:15px; font-size:12px;}
-th, td { border:1px solid #ddd; padding:6px; text-align:right; }
-th { background:#f0f0f0; }
-.left { text-align:left; }
-.summary { font-size:14px; }
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #181c24;
+    --border: #232835;
+    --border2: #2e3444;
+    --text: #e8eaf0;
+    --text2: #8990a8;
+    --text3: #525870;
+    --accent: #4f8ef7;
+    --green: #22d68a;
+    --yellow: #f5c842;
+    --red: #f05252;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: 0.35;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 1380px;
+    margin: 0 auto;
+    padding: 36px 24px 80px;
+  }
+
+  header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 40px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+    gap: 20px;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    line-height: 1.25;
+  }
+  .logo span { color: var(--accent); }
+
+  .disclaimer {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.7;
+    max-width: 900px;
+    padding: 10px 14px;
+    border-left: 2px solid var(--border2);
+    background: rgba(255,255,255,0.02);
+    border-radius: 0 3px 3px 0;
+    text-align: justify;
+  }
+
+  .disclaimer-label {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--yellow);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  /* INPUT BLOCKS */
+  .input-block {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .input-block:last-of-type { margin-bottom: 0; }
+
+  .block-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border2);
+  }
+
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+
+  .field label {
+    display: block;
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    margin-bottom: 6px;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .subtitle {
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .badge {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    border: 1px solid var(--border2);
+    padding: 4px 10px;
+    border-radius: 2px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .main-grid {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .panel-header .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .panel-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text2);
+  }
+
+  .inputs-body { padding: 16px; display: flex; flex-direction: column; gap: 0; }
+
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+
+  .field-desc {
+    font-size: 11px;
+    color: var(--text3);
+    line-height: 1.5;
+    margin-top: 5px;
+    padding: 6px 8px;
+    background: rgba(255,255,255,0.03);
+    border-left: 2px solid var(--border2);
+    border-radius: 0 2px 2px 0;
+  }
+
+  .field-hint {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 4px;
+  }
+
+  .field input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 9px 12px;
+    border-radius: 3px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .field input:focus {
+    border-color: var(--accent);
+    background: #13182a;
+  }
+
+  .field input::placeholder { color: var(--text3); }
+
+  .btn-calc {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 13px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    margin-top: 16px;
+  }
+
+  .btn-calc:hover { background: #6fa3ff; }
+  .btn-calc:active { transform: scale(0.99); }
+
+  .right-col { display: flex; flex-direction: column; gap: 20px; }
+
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 22px 20px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent);
+  }
+
+  .kpi-card.green::before { background: var(--green); }
+  .kpi-card.yellow::before { background: var(--yellow); }
+  .kpi-card.red::before { background: var(--red); }
+
+  .kpi-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .kpi-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 42px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--text);
+    letter-spacing: -1px;
+  }
+
+  .kpi-value.irr-main { color: var(--accent); }
+  .kpi-value.green { color: var(--green); }
+  .kpi-value.yellow { color: var(--yellow); }
+  .kpi-value.red { color: var(--red); }
+
+  .kpi-divider {
+    width: 32px;
+    height: 2px;
+    background: var(--border2);
+    margin: 12px 0;
+  }
+
+  .kpi-sub {
+    font-size: 11px;
+    color: var(--text3);
+    line-height: 1.55;
+  }
+
+  /* CHART */
+  .chart-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .chart-inner {
+    padding: 20px;
+    position: relative;
+    height: 210px;
+  }
+
+  canvas#chart {
+    width: 100% !important;
+    height: 170px !important;
+    cursor: crosshair;
+    display: block;
+  }
+
+  /* Tooltip */
+  #chartTooltip {
+    position: fixed;
+    background: #1a1f2e;
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--text);
+    pointer-events: none;
+    display: none;
+    z-index: 9999;
+    white-space: nowrap;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+  #chartTooltip .tt-month { font-size: 10px; color: var(--text3); margin-bottom: 4px; letter-spacing: 1px; text-transform: uppercase; }
+  #chartTooltip .tt-val { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; color: var(--green); }
+  #chartTooltip .tt-note { font-size: 10px; color: var(--text3); margin-top: 3px; }
+
+  /* TABS */
+  .tabs-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .tabs-header {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab-btn {
+    padding: 12px 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    background: rgba(79,142,247,0.05);
+  }
+
+  .tab-btn:hover:not(.active) { color: var(--text2); }
+
+  .tab-content { display: none; overflow-x: auto; }
+  .tab-content.active { display: block; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  thead th {
+    padding: 10px 12px;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 2;
+  }
+
+  thead th:first-child { text-align: left; }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+
+  tbody tr:hover { background: var(--surface2); }
+
+  tbody td {
+    padding: 8px 12px;
+    text-align: right;
+    color: var(--text2);
+    white-space: nowrap;
+  }
+
+  tbody td:first-child {
+    text-align: left;
+    color: var(--text3);
+    font-size: 11px;
+  }
+
+  td.pos { color: var(--green); }
+  td.neg { color: var(--red); }
+
+  tfoot tr td {
+    padding: 10px 12px;
+    text-align: right;
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text);
+    border-top: 2px solid var(--border2);
+    background: var(--surface2);
+    white-space: nowrap;
+  }
+
+  tfoot tr td:first-child {
+    text-align: left;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  .empty-state {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--text3);
+  }
+
+  .empty-state .big {
+    font-family: 'Syne', sans-serif;
+    font-size: 48px;
+    font-weight: 800;
+    color: var(--border2);
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+
+  .table-scroll {
+    max-height: 420px;
+    overflow-y: auto;
+  }
+
+  .table-scroll::-webkit-scrollbar { width: 4px; }
+  .table-scroll::-webkit-scrollbar-track { background: var(--surface); }
+  .table-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 960px) {
+    .main-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  }
 </style>
 </head>
 <body>
 
-<h1>Portfolio IRR Calculator</h1>
-<div class="subtitle">Модель оценки доходности покупки портфеля задолженности (валюта: PHP)</div>
-
-<div class="section grid">
-
-<div>
-<label>Количество дел (шт.)</label>
-<div class="desc">Общее количество дел в портфеле</div>
-<input id="cases" type="number" value="10000">
+<div id="chartTooltip">
+  <div class="tt-month" id="ttMonth"></div>
+  <div class="tt-val" id="ttVal"></div>
+  <div class="tt-note" id="ttNote"></div>
 </div>
 
-<div>
-<label>Средний номинал (PHP)</label>
-<div class="desc">Средний основной долг по делу</div>
-<input id="nominal" type="number" value="10000">
-</div>
+<div class="wrap">
+  <header>
+    <div style="flex:1">
+      <div class="logo">Калькулятор оценки <span>IRR</span> покупки портфеля задолженности (SOL PH)</div>
+      <div class="disclaimer">
+        <span class="disclaimer-label">Disclaimer.</span> Представленный калькулятор — это инструмент для анализа инвестиционной эффективности приобретения долгового портфеля. Модель рассчитывает денежные потоки на горизонте 36 месяцев с учётом структуры портфеля, скорости выгорания, глубины взыскания, операционных расходов и определяет итоговую доходность (IRR) и срок окупаемости. Инструмент используется для предварительной оценки сделки, ценообразования и анализа чувствительности ключевых параметров. Результаты зависят от введённых допущений и предназначены для поддержки управленческих решений.
+      </div>
+    </div>
+    <div class="badge" style="align-self:flex-start;margin-top:4px">36 месяцев</div>
+  </header>
 
-<div>
-<label>Цена покупки (%)</label>
-<div class="desc">Процент от номинала, уплаченный за портфель</div>
-<input id="price" type="number" value="5">
-</div>
+  <div class="main-grid">
+    <!-- INPUTS -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="dot"></div>
+        <div class="panel-title">Переменные параметры (введите значения)</div>
+      </div>
+      <div class="inputs-body">
 
-<div>
-<label>Dead Share (%)</label>
-<div class="desc">Доля невзыскиваемых дел</div>
-<input id="dead" type="number" value="40">
-</div>
+        <div class="input-block">
+          <div class="block-title">Портфель</div>
+          <div class="field">
+            <label>Количество дел (шт.)</label>
+            <input type="text" id="cases" value="10 000">
+            <div class="field-desc">Общее количество долговых кейсов, входящих в приобретаемый портфель.</div>
+          </div>
+          <div class="field">
+            <label>Средний номинал одного дела (PHP)</label>
+            <input type="text" id="nominal" value="33 000">
+            <div class="field-desc">Средний размер основного долга по одному делу (без учёта процентов и штрафов).</div>
+          </div>
+          <div class="field">
+            <label>Цена покупки (% от номинала)</label>
+            <input type="text" id="price" value="5">
+            <div class="field-hint">Должна быть &lt; 100%</div>
+            <div class="field-desc">Процент от общего номинала портфеля, который уплачивается при покупке. Определяет начальную инвестицию.</div>
+          </div>
+        </div>
 
-<div>
-<label>Recovery Ceiling (%)</label>
-<div class="desc">Средний % взыскания от номинала закрытого дела</div>
-<input id="ceiling" type="number" value="35">
-</div>
+        <div class="input-block">
+          <div class="block-title">Структура портфеля</div>
+          <div class="field">
+            <label>Dead Share (%)</label>
+            <input type="text" id="deadShare" value="30">
+            <div class="field-desc">Доля дел, которые не принесут взыскания (безнадёжные кейсы). Эти дела не дают сборов, но временно участвуют в операционной нагрузке.</div>
+          </div>
+          <div class="field">
+            <label>Recovery Ceiling (%)</label>
+            <input type="text" id="recoveryCeiling" value="13">
+            <div class="field-desc">Средний процент взыскания от номинала по каждому успешно закрытому делу. Определяет глубину сбора.</div>
+          </div>
+          <div class="field">
+            <label>Average Case Lifetime (мес.)</label>
+            <input type="text" id="lifetime" value="6">
+            <div class="field-desc">Средний срок жизни одного дела в работе. Чем меньше значение, тем быстрее портфель выгорает.</div>
+          </div>
+        </div>
 
-<div>
-<label>Lifetime (мес.)</label>
-<div class="desc">Средний срок жизни дела</div>
-<input id="lifetime" type="number" value="12">
-</div>
+        <div class="input-block">
+          <div class="block-title">Операционные показатели</div>
+          <div class="field">
+            <label>Дел на одного коллектора</label>
+            <input type="text" id="capacity" value="200">
+            <div class="field-desc">Максимальное количество дел, которое может вести один сотрудник одновременно в месяц.</div>
+          </div>
+          <div class="field">
+            <label>Зарплата коллектора (PHP/мес.)</label>
+            <input type="text" id="salary" value="50 000">
+            <div class="field-desc">Средняя фиксированная месячная зарплата одного сотрудника, включая все обязательные налоги и сборы.</div>
+          </div>
+          <div class="field">
+            <label>Переменные расходы на дело в работе (PHP/мес.)</label>
+            <input type="text" id="varCost" value="5 000">
+            <div class="field-desc">Дополнительные расходы на обслуживание одного дела (IVR, SMS, IT, комиссии и т.д.) в месяц.</div>
+          </div>
+        </div>
 
-<div>
-<label>Дел на коллектора</label>
-<div class="desc">Максимальная нагрузка на одного сотрудника</div>
-<input id="capacity" type="number" value="500">
-</div>
+        <button class="btn-calc" onclick="calculate()">▶ Рассчитать IRR</button>
+      </div>
+    </div>
 
-<div>
-<label>Зарплата коллектора (PHP)</label>
-<div class="desc">Фиксированная месячная зарплата</div>
-<input id="salary" type="number" value="30000">
-</div>
+    <!-- RIGHT COLUMN -->
+    <div class="right-col">
 
-<div>
-<label>Переменные расходы на дело (PHP)</label>
-<div class="desc">IVR, SMS и прочие расходы</div>
-<input id="variable" type="number" value="20">
-</div>
+      <!-- KPI: 3 cards -->
+      <div class="kpi-row">
+        <div class="kpi-card" id="irrCard">
+          <div class="kpi-label">Годовой IRR</div>
+          <div class="kpi-value irr-main" id="kpiIrrAnn">—</div>
+          <div class="kpi-divider"></div>
+          <div class="kpi-sub">Годовая ставка доходности на вложенный капитал</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Срок окупаемости</div>
+          <div class="kpi-value" id="kpiPayback">—</div>
+          <div class="kpi-divider"></div>
+          <div class="kpi-sub">Количество месяцев до момента, когда накопленный чистый денежный поток становится положительным.</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Recovery Rate</div>
+          <div class="kpi-value green" id="kpiRecRate">—</div>
+          <div class="kpi-divider"></div>
+          <div class="kpi-sub">Отношение суммарных сборов к стоимости покупки портфеля</div>
+        </div>
+      </div>
 
-</div>
+      <!-- CHART -->
+      <div class="chart-panel panel">
+        <div class="panel-header">
+          <div class="dot" style="background:var(--green)"></div>
+          <div class="panel-title">Накопленный Recovery Rate (% от стоимости покупки)</div>
+        </div>
+        <div class="chart-inner">
+          <canvas id="chart"></canvas>
+          <div class="empty-state" id="chartEmpty" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+            <div class="big">?</div>
+            <div>Запустите расчёт для отображения графика</div>
+          </div>
+        </div>
+      </div>
 
-<button onclick="calculate()">Рассчитать</button>
+      <!-- TABS + TABLES -->
+      <div class="tabs-wrap">
+        <div class="tabs-header">
+          <button class="tab-btn active" onclick="switchTab('cashflow', this)">Cash Flow</button>
+          <button class="tab-btn" onclick="switchTab('ops', this)">Операции</button>
+        </div>
 
-<div class="section">
-<div>IRR (годовой)</div>
-<div id="irrYear" class="kpi"></div>
-<div id="irrMonth" class="small"></div>
-<div id="payback" class="small"></div>
-</div>
+        <div class="tab-content active" id="tab-cashflow">
+          <div class="empty-state" id="cfEmpty">
+            <div class="big">↓</div>
+            <div>Введите параметры и нажмите «Рассчитать»</div>
+          </div>
+          <div class="table-scroll" id="cfTableWrap" style="display:none">
+            <table>
+              <thead>
+                <tr>
+                  <th>Месяц</th>
+                  <th>Покупка портфеля</th>
+                  <th>Сборы</th>
+                  <th>Расходы на персонал</th>
+                  <th>Прочие расходы</th>
+                  <th>Налог</th>
+                  <th>Net CF</th>
+                  <th>Cumul. Net CF</th>
+                </tr>
+              </thead>
+              <tbody id="cfBody"></tbody>
+              <tfoot id="cfFoot"></tfoot>
+            </table>
+          </div>
+        </div>
 
-<div class="section">
-<canvas id="chart"></canvas>
-</div>
+        <div class="tab-content" id="tab-ops">
+          <div class="empty-state" id="opsEmpty">
+            <div class="big">↓</div>
+            <div>Введите параметры и нажмите «Рассчитать»</div>
+          </div>
+          <div class="table-scroll" id="opsTableWrap" style="display:none">
+            <table>
+              <thead>
+                <tr>
+                  <th>Месяц</th>
+                  <th>Дел в работе</th>
+                  <th>Закрытые (PAID)</th>
+                  <th>Списанные (Dead)</th>
+                  <th>Остаток Dead</th>
+                  <th>Collectors</th>
+                </tr>
+              </thead>
+              <tbody id="opsBody"></tbody>
+              <tfoot id="opsFoot"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
 
-<div class="section">
-<h3>Сводные показатели</h3>
-<div id="summary" class="summary"></div>
-</div>
-
-<div class="section">
-<h3>Таблица денежных потоков (36 месяцев)</h3>
-<div id="table"></div>
+    </div>
+  </div>
 </div>
 
 <script>
-
-function formatPHP(x){
-  return Math.round(x).toString().replace(/\B(?=(\d{3})+(?!\d))/g," ") + " PHP";
+// ─── FORMAT UTILS ─────────────────────────────────────────────────────────────
+function fmtNum(n) {
+  // Format integer with non-breaking space as thousands separator
+  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
 }
 
-function IRR(cashflows, guess=0.1){
-  let x = guess;
-  for(let i=0;i<1000;i++){
-    let f=0, df=0;
-    for(let t=0;t<cashflows.length;t++){
-      f += cashflows[t]/Math.pow(1+x,t);
-      df += -t*cashflows[t]/Math.pow(1+x,t+1);
-    }
-    let newX = x - f/df;
-    if(Math.abs(newX-x)<1e-7) return newX;
-    x = newX;
-  }
-  return x;
+function parseInput(id) {
+  const val = document.getElementById(id).value
+    .replace(/[\s\u00a0\u202f]/g, '') // strip all space variants
+    .replace(',', '.');
+  return parseFloat(val) || 0;
 }
 
-function calculate(){
-
-  let cases = parseFloat(document.getElementById("cases").value);
-  let nominal = parseFloat(document.getElementById("nominal").value);
-  let price = parseFloat(document.getElementById("price").value)/100;
-  let dead = parseFloat(document.getElementById("dead").value)/100;
-  let ceiling = parseFloat(document.getElementById("ceiling").value)/100;
-  let lifetime = parseInt(document.getElementById("lifetime").value);
-  let capacity = parseFloat(document.getElementById("capacity").value);
-  let salary = parseFloat(document.getElementById("salary").value);
-  let variable = parseFloat(document.getElementById("variable").value);
-
-  let months = 36;
-  let burn = 1/lifetime;
-
-  let deadCases = cases * dead;
-  let liveCases = cases - deadCases;
-
-  let purchase = cases * nominal * price;
-  let cashflows = [-purchase];
-
-  let cumulativeRecovery = 0;
-  let cumulativeNet = -purchase;
-  let paybackMonth = null;
-
-  let chartData = [];
-  let tableHTML = "<table><tr><th class='left'>Месяц</th><th>Сборы</th><th>Расходы</th><th>Налог</th><th>Чистый поток</th><th>Накопленный</th></tr>";
-
-  for(let m=1;m<=months;m++){
-
-    let deadOut = m<=3 ? (cases*dead*0.8/3) : (cases*dead*0.2/33);
-    deadCases -= deadOut;
-
-    let closed = liveCases * burn;
-    if(closed>liveCases) closed=liveCases;
-    liveCases -= closed;
-
-    let recovery = closed * nominal * ceiling;
-    cumulativeRecovery += recovery;
-
-    let avgWork = (liveCases + closed)/2 + deadCases;
-    let collectors = Math.ceil(avgWork/capacity);
-    if(avgWork>0 && collectors<1) collectors=1;
-
-    let cost = collectors*salary + avgWork*variable;
-
-    let tax = 0;
-    if(cumulativeRecovery>purchase){
-      tax = (cumulativeRecovery - purchase)*0.12;
-    }
-
-    let net = recovery - cost - tax;
-    cumulativeNet += net;
-
-    if(paybackMonth===null && cumulativeNet>0) paybackMonth=m;
-
-    cashflows.push(net);
-    chartData.push((cumulativeRecovery/(cases*nominal))*100);
-
-    tableHTML += "<tr><td class='left'>"+m+"</td><td>"+formatPHP(recovery)+"</td><td>"+formatPHP(cost)+"</td><td>"+formatPHP(tax)+"</td><td>"+formatPHP(net)+"</td><td>"+formatPHP(cumulativeNet)+"</td></tr>";
-  }
-
-  tableHTML+="</table>";
-  document.getElementById("table").innerHTML = tableHTML;
-
-  let irrMonthly = IRR(cashflows);
-  let irrYear = Math.pow(1+irrMonthly,12)-1;
-
-  document.getElementById("irrYear").innerText = (irrYear*100).toFixed(2)+" %";
-  document.getElementById("irrMonth").innerText = "IRR (месячный): "+(irrMonthly*100).toFixed(2)+" %";
-  document.getElementById("payback").innerText = paybackMonth ? "Payback: "+paybackMonth+" мес." : "Не окупается";
-
-  document.getElementById("summary").innerHTML =
-    "Стоимость покупки: "+formatPHP(purchase)+"<br>"+
-    "Совокупные сборы: "+formatPHP(cumulativeRecovery)+"<br>"+
-    "Итоговый чистый поток: "+formatPHP(cumulativeNet);
-
-  new Chart(document.getElementById("chart"),{
-    type:"line",
-    data:{
-      labels:[...Array(36).keys()].map(x=>x+1),
-      datasets:[{label:"Recovery %", data:chartData}]
-    }
+// ─── INPUT: format on blur, allow free editing on focus ──────────────────────
+function setupInputs() {
+  document.querySelectorAll('.inputs-body input').forEach(el => {
+    // On focus: show raw number (no formatting)
+    el.addEventListener('focus', function() {
+      const raw = this.value.replace(/[\s\u00a0\u202f]/g, '');
+      this.value = raw;
+    });
+    // On blur: reformat
+    el.addEventListener('blur', function() {
+      const raw = this.value.replace(/[\s\u00a0\u202f]/g, '').replace(',', '.');
+      const num = parseFloat(raw);
+      if (!isNaN(num)) {
+        // Keep decimals if any
+        if (Number.isInteger(num)) {
+          this.value = num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+        } else {
+          const parts = num.toString().split('.');
+          parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+          this.value = parts.join('.');
+        }
+      }
+    });
   });
 }
 
-</script>
+// ─── IRR via Newton-Raphson ───────────────────────────────────────────────────
+function calcIRR(cashflows, guess) {
+  guess = guess || 0.01;
+  let rate = guess;
+  for (let i = 0; i < 2000; i++) {
+    let npv = 0, dnpv = 0;
+    for (let t = 0; t < cashflows.length; t++) {
+      const d = Math.pow(1 + rate, t);
+      npv  +=  cashflows[t] / d;
+      dnpv -= t * cashflows[t] / Math.pow(1 + rate, t + 1);
+    }
+    if (Math.abs(dnpv) < 1e-15) break;
+    const nr = rate - npv / dnpv;
+    if (Math.abs(nr - rate) < 1e-12) return nr;
+    rate = nr;
+  }
+  return rate;
+}
 
+// ─── GLOBAL CHART STATE ───────────────────────────────────────────────────────
+let _chart = null; // { rrSeries, MONTHS }
+
+// ─── MAIN CALCULATION ─────────────────────────────────────────────────────────
+function calculate() {
+  const cases    = parseInput('cases');
+  const nominal  = parseInput('nominal');
+  const pricePct = parseInput('price') / 100;
+  const deadShr  = parseInput('deadShare') / 100;
+  const recCeil  = parseInput('recoveryCeiling') / 100;
+  const lifetime = Math.max(1, Math.round(parseInput('lifetime')));
+  const capacity = Math.max(1, Math.round(parseInput('capacity')));
+  const salary   = parseInput('salary');
+  const varCost  = parseInput('varCost');
+  const TAX_RATE = 0.12;
+  const MONTHS   = 36;
+
+  // 3.1 Purchase
+  const purchase = cases * nominal * pricePct;
+
+  // Dead write-off schedule (% от исходного кол-ва дел каждый месяц)
+  // 80% DeadShare равномерно в мес. 1-3, 20% равномерно в мес. 4-36
+  const writeOffPct = new Array(MONTHS + 1).fill(0);
+  for (let t = 1; t <= 3; t++)      writeOffPct[t] = deadShr * 0.8 / 3;
+  for (let t = 4; t <= MONTHS; t++) writeOffPct[t] = deadShr * 0.2 / (MONTHS - 3);
+
+  const burnRate = 1 / lifetime;
+
+  // Единый пул дел в работе (как в Excel, колонка G)
+  const pool       = new Array(MONTHS + 1).fill(0); // все дела в работе
+  const writeOff   = new Array(MONTHS + 1).fill(0); // списанные (dead) в месяц t
+  const closed     = new Array(MONTHS + 1).fill(0); // закрытые (PAID) в месяц t
+  const recovery   = new Array(MONTHS + 1).fill(0);
+  const collectors = new Array(MONTHS + 1).fill(0);
+  const staffCost  = new Array(MONTHS + 1).fill(0); // расходы на персонал
+  const otherCost  = new Array(MONTHS + 1).fill(0); // прочие расходы = дела * varCost
+  const cost       = new Array(MONTHS + 1).fill(0); // итого расходы
+  const tax        = new Array(MONTHS + 1).fill(0);
+  const netCF      = new Array(MONTHS + 1).fill(0);
+  const cumRec     = new Array(MONTHS + 1).fill(0);
+
+  // t=0: весь портфель в работе (Excel G2 = C2)
+  pool[0] = cases;
+
+  // Для таблицы операций — отдельно считаем накопленный остаток dead
+  const deadRem = new Array(MONTHS + 1).fill(0);
+  deadRem[0] = cases * deadShr;
+
+  // TAX: пропускаем месяц первого пересечения, начисляем со следующего
+  let exceededMonth = -1;
+
+  for (let t = 1; t <= MONTHS; t++) {
+    // Списанные (dead write-off) = ROUND(cases * writeOffPct, 0) — как Excel I(t)
+    writeOff[t] = Math.round(cases * writeOffPct[t]);
+
+    // Закрытые (PAID) = pool[t-1] * BurnRate — от всего пула, как Excel H(t)
+    closed[t] = Math.max(0, pool[t-1] * burnRate);
+
+    // Новый пул = пул(t-1) − закрытые − списанные, минимум 0 (Excel G(t))
+    pool[t] = Math.max(0, pool[t-1] - closed[t] - writeOff[t]);
+
+    // Остаток dead (для отображения в таблице)
+    deadRem[t] = Math.max(0, deadRem[t-1] - writeOff[t]);
+
+    // Сборы
+    recovery[t] = closed[t] * nominal * recCeil;
+    cumRec[t]   = cumRec[t-1] + recovery[t];
+
+    // Коллекторы = ROUND( среднее(pool[t-1], pool[t]) / capacity, 0 )
+    collectors[t] = Math.round(((pool[t-1] + pool[t]) / 2) / capacity);
+
+    // Расходы на персонал: коллекторы × зарплата (Excel R = -J * C14)
+    staffCost[t] = collectors[t] * salary;
+    // Прочие расходы: коллекторы × varCost (Excel S = -J * C15)
+    otherCost[t] = collectors[t] * varCost;
+    // Итого расходы
+    cost[t] = staffCost[t] + otherCost[t];
+
+    // Налог: пропускаем месяц пересечения, начисляем со следующего
+    if (exceededMonth === -1 && cumRec[t] > purchase) {
+      exceededMonth = t;
+      tax[t] = 0;
+    } else if (exceededMonth !== -1 && t > exceededMonth) {
+      tax[t] = TAX_RATE * recovery[t];
+    } else {
+      tax[t] = 0;
+    }
+
+    // Net CF
+    netCF[t] = recovery[t] - cost[t] - tax[t];
+  }
+
+  // IRR — t=0: −Purchase, t=1..36: NetCF(t)
+  // NetCF уже не включает покупку, она идёт отдельно в t=0
+  const cashflows = [-purchase, ...netCF.slice(1)];
+  const irrMonth  = calcIRR(cashflows);
+  const irrAnnual = Math.pow(1 + irrMonth, 12) - 1;
+
+  // Payback: накопленный CF начиная с -purchase
+  let payback = null;
+  let runNet = -purchase;
+  for (let t = 1; t <= MONTHS; t++) {
+    runNet += netCF[t];
+    if (runNet > 0 && payback === null) payback = t;
+  }
+
+  // Recovery Rate = cumulative collections / purchase
+  const totalRecovery  = cumRec[MONTHS];
+  const recoveryRate   = purchase > 0 ? totalRecovery / purchase : 0;
+
+  // ─── KPIs ──────────────────────────────────────────────────────────────────
+  const pct      = irrAnnual * 100;
+  const irrClass = pct >= 25 ? 'green' : pct >= 15 ? 'yellow' : 'red';
+
+  const irrCard = document.getElementById('irrCard');
+  irrCard.className = 'kpi-card ' + irrClass;
+
+  const annEl = document.getElementById('kpiIrrAnn');
+  annEl.textContent = pct.toFixed(1) + '%';
+  annEl.className = 'kpi-value irr-main ' + irrClass;
+
+  document.getElementById('kpiPayback').textContent = payback !== null ? payback : 'N/A';
+  document.getElementById('kpiRecRate').textContent = (recoveryRate * 100).toFixed(1) + '%';
+
+  // ─── CHART ─────────────────────────────────────────────────────────────────
+  document.getElementById('chartEmpty').style.display = 'none';
+  // Recovery rate series: cumRec[t] / purchase * 100
+  const rrSeries = [];
+  for (let t = 1; t <= MONTHS; t++) {
+    rrSeries.push(purchase > 0 ? cumRec[t] / purchase * 100 : 0);
+  }
+  _chart = { rrSeries, MONTHS };
+  drawChart(rrSeries, MONTHS);
+
+  // ─── CASH FLOW TABLE ───────────────────────────────────────────────────────
+  document.getElementById('cfEmpty').style.display = 'none';
+  document.getElementById('cfTableWrap').style.display = '';
+
+  const cfBody = document.getElementById('cfBody');
+  cfBody.innerHTML = '';
+
+  // Знак числа: положительные "+" зелёным, отрицательные "−" красным
+  // Возвращает объект {html, cls} для вставки в <td>
+  function fmtSigned(n) {
+    const abs = fmtNum(Math.abs(n));
+    if (n > 0)  return { html: '+' + abs, cls: 'pos' };
+    if (n < 0)  return { html: '−' + abs, cls: 'neg' };
+    return { html: '0', cls: '' };
+  }
+  function td(val) {
+    const s = fmtSigned(val);
+    return '<td class="' + s.cls + '">' + s.html + '</td>';
+  }
+
+  // Строка t=0: покупка портфеля
+  const tr0 = document.createElement('tr');
+  tr0.innerHTML =
+    '<td>0</td>' +
+    '<td class="neg">−' + fmtNum(purchase) + '</td>' +
+    '<td>—</td>' +
+    '<td>—</td>' +
+    '<td>—</td>' +
+    '<td>—</td>' +
+    '<td class="neg">−' + fmtNum(purchase) + '</td>' +
+    '<td class="neg">−' + fmtNum(purchase) + '</td>';
+  cfBody.appendChild(tr0);
+
+  let sumPurch = purchase;
+  let sumRec   = 0, sumStaff = 0, sumOther = 0, sumTax = 0, sumNetCF = 0;
+  let runCumNet = -purchase;
+
+  for (let t = 1; t <= MONTHS; t++) {
+    runCumNet += netCF[t];
+    sumRec    += recovery[t];
+    sumStaff  += staffCost[t];
+    sumOther  += otherCost[t];
+    sumTax    += tax[t];
+    sumNetCF  += netCF[t];
+
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + t + '</td>' +
+      '<td>—</td>' +
+      td(recovery[t]) +
+      td(-staffCost[t]) +
+      td(-otherCost[t]) +
+      td(-tax[t]) +
+      td(netCF[t]) +
+      td(runCumNet);
+    cfBody.appendChild(tr);
+  }
+
+  const totalNetCF = sumNetCF - purchase;
+  const footNet    = fmtSigned(sumNetCF);
+  const footTotal  = fmtSigned(totalNetCF);
+  document.getElementById('cfFoot').innerHTML =
+    '<tr>' +
+    '<td>Итого</td>' +
+    '<td class="neg">−' + fmtNum(sumPurch) + '</td>' +
+    '<td class="pos">+' + fmtNum(sumRec) + '</td>' +
+    '<td class="neg">−' + fmtNum(sumStaff) + '</td>' +
+    '<td class="neg">−' + fmtNum(sumOther) + '</td>' +
+    '<td class="neg">−' + fmtNum(sumTax) + '</td>' +
+    '<td class="' + footNet.cls   + '">' + footNet.html   + '</td>' +
+    '<td class="' + footTotal.cls + '">' + footTotal.html + '</td>' +
+    '</tr>';
+
+  // ─── OPS TABLE ─────────────────────────────────────────────────────────────
+  document.getElementById('opsEmpty').style.display = 'none';
+  document.getElementById('opsTableWrap').style.display = '';
+
+  const opsBody = document.getElementById('opsBody');
+  opsBody.innerHTML = '';
+
+  let sPool = 0, sClosed = 0, sWriteOff = 0, sDeadRem = 0, sCollectors = 0;
+
+  for (let t = 1; t <= MONTHS; t++) {
+    sPool       += pool[t];
+    sClosed     += closed[t];
+    sWriteOff   += writeOff[t];
+    sDeadRem    += deadRem[t];
+    sCollectors += collectors[t];
+
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + t + '</td>' +
+      '<td>' + fmtNum(pool[t]) + '</td>' +
+      '<td>' + fmtNum(closed[t]) + '</td>' +
+      '<td>' + fmtNum(writeOff[t]) + '</td>' +
+      '<td>' + fmtNum(deadRem[t]) + '</td>' +
+      '<td>' + collectors[t] + '</td>';
+    opsBody.appendChild(tr);
+  }
+
+  document.getElementById('opsFoot').innerHTML =
+    '<tr>' +
+    '<td>Итого</td>' +
+    '<td>' + fmtNum(sPool) + '</td>' +
+    '<td>' + fmtNum(sClosed) + '</td>' +
+    '<td>' + fmtNum(sWriteOff) + '</td>' +
+    '<td>' + fmtNum(sDeadRem) + '</td>' +
+    '<td>' + Math.round(sCollectors) + '</td>' +
+    '</tr>';
+
+  // Animate
+  document.querySelectorAll('.kpi-card').forEach(function(el, i) {
+    el.style.animation = 'none';
+    el.offsetHeight;
+    el.style.animation = 'fadeIn 0.3s ease ' + (i * 0.07) + 's both';
+  });
+}
+
+// ─── CHART ───────────────────────────────────────────────────────────────────
+function drawChart(rrSeries, MONTHS) {
+  const canvas = document.getElementById('chart');
+  const dpr    = window.devicePixelRatio || 1;
+  const W      = canvas.parentElement.clientWidth - 40;
+  const H      = 170;
+
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  canvas.width        = W * dpr;
+  canvas.height       = H * dpr;
+
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const PAD = { top: 12, right: 16, bottom: 30, left: 52 };
+  const cw  = W - PAD.left - PAD.right;
+  const ch  = H - PAD.top  - PAD.bottom;
+
+  const maxVal = Math.max(...rrSeries, 110, 10);
+
+  // Store for tooltip
+  canvas._meta = { PAD, cw, ch, W, H, maxVal, rrSeries, MONTHS };
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid lines
+  for (let i = 0; i <= 4; i++) {
+    const y = PAD.top + ch * (1 - i / 4);
+    ctx.strokeStyle = '#232835';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.moveTo(PAD.left, y);
+    ctx.lineTo(PAD.left + cw, y);
+    ctx.stroke();
+    ctx.fillStyle  = '#525870';
+    ctx.font       = '10px DM Mono';
+    ctx.textAlign  = 'right';
+    ctx.fillText((maxVal * i / 4).toFixed(0) + '%', PAD.left - 6, y + 3);
+  }
+
+  // Area fill
+  const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + ch);
+  grad.addColorStop(0, 'rgba(34,214,138,0.22)');
+  grad.addColorStop(1, 'rgba(34,214,138,0.0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(PAD.left, PAD.top + ch);
+  rrSeries.forEach(function(v, i) {
+    const x = PAD.left + (i / (MONTHS - 1)) * cw;
+    const y = PAD.top  + ch * (1 - v / maxVal);
+    if (i === 0) ctx.lineTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.lineTo(PAD.left + cw, PAD.top + ch);
+  ctx.closePath();
+  ctx.fill();
+
+  // Line
+  ctx.strokeStyle = '#22d68a';
+  ctx.lineWidth   = 2;
+  ctx.lineJoin    = 'round';
+  ctx.beginPath();
+  rrSeries.forEach(function(v, i) {
+    const x = PAD.left + (i / (MONTHS - 1)) * cw;
+    const y = PAD.top  + ch * (1 - v / maxVal);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // X labels
+  ctx.fillStyle  = '#525870';
+  ctx.font       = '10px DM Mono';
+  ctx.textAlign  = 'center';
+  [1, 6, 12, 18, 24, 30, 36].forEach(function(t) {
+    const x = PAD.left + ((t - 1) / (MONTHS - 1)) * cw;
+    ctx.fillText('M' + t, x, PAD.top + ch + 18);
+  });
+}
+
+// ─── CHART TOOLTIP ────────────────────────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('chart');
+  const tt     = document.getElementById('chartTooltip');
+
+  canvas.addEventListener('mousemove', function(e) {
+    if (!_chart || !this._meta) { tt.style.display = 'none'; return; }
+    const meta = this._meta;
+    const rect  = this.getBoundingClientRect();
+    const mx    = e.clientX - rect.left;
+
+    if (mx < meta.PAD.left || mx > meta.PAD.left + meta.cw) {
+      tt.style.display = 'none'; return;
+    }
+
+    const frac = (mx - meta.PAD.left) / meta.cw;
+    const idx  = Math.min(meta.MONTHS - 1, Math.max(0, Math.round(frac * (meta.MONTHS - 1))));
+    const val  = meta.rrSeries[idx];
+    const month= idx + 1;
+
+    document.getElementById('ttMonth').textContent = 'Месяц ' + month;
+    document.getElementById('ttVal').textContent   = val.toFixed(1) + '%';
+    document.getElementById('ttNote').textContent  = val >= 100
+      ? '↑ Выше стоимости покупки'
+      : '↓ Ниже стоимости покупки';
+
+    tt.style.display = 'block';
+    tt.style.left    = (e.clientX + 16) + 'px';
+    tt.style.top     = (e.clientY - 12) + 'px';
+
+    // Redraw with crosshair dot
+    drawChart(meta.rrSeries, meta.MONTHS);
+    const ctx2  = canvas.getContext('2d');
+    const dpr   = window.devicePixelRatio || 1;
+    ctx2.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const x = meta.PAD.left + (idx / (meta.MONTHS - 1)) * meta.cw;
+    const y = meta.PAD.top  + meta.ch * (1 - val / meta.maxVal);
+
+    ctx2.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx2.lineWidth   = 1;
+    ctx2.setLineDash([3, 3]);
+    ctx2.beginPath();
+    ctx2.moveTo(x, meta.PAD.top);
+    ctx2.lineTo(x, meta.PAD.top + meta.ch);
+    ctx2.stroke();
+    ctx2.setLineDash([]);
+
+    ctx2.beginPath();
+    ctx2.arc(x, y, 4, 0, Math.PI * 2);
+    ctx2.fillStyle   = '#22d68a';
+    ctx2.fill();
+    ctx2.strokeStyle = '#0a0c10';
+    ctx2.lineWidth   = 2;
+    ctx2.stroke();
+  });
+
+  canvas.addEventListener('mouseleave', function() {
+    tt.style.display = 'none';
+    if (_chart) drawChart(_chart.rrSeries, _chart.MONTHS);
+  });
+})();
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', setupInputs);
+</script>
 </body>
 </html>
